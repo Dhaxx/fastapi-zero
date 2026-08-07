@@ -12,7 +12,7 @@ def read_root():
 
 
 @app.get('/ola_mundo', status_code=HTTPStatus.OK, response_class=HTMLResponse)
-def ola_munde():
+def ola_mundo():
     return """
     <html>
       <head>
