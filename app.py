@@ -1,9 +1,13 @@
 from http import HTTPStatus
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from schemas import Message, UserDB, UserList, UserPublic, UserSchema
+from database import get_session
+from models import User
 
 app = FastAPI()
 
@@ -29,21 +33,35 @@ def ola_mundo():
 
 
 @app.post('/users', status_code=HTTPStatus.CREATED, response_model=UserPublic)
-def create_user(user: UserSchema):
-    user_with_id = UserDB(**user.model_dump(), id=len(database) + 1)
+def create_user(user: UserSchema, session: Session = Depends(get_session)):
+    db_user = session.scalar(
+        select(User).where(
+            (User.username == user.username) | (User.email == user.email)
+        )
+    )
 
-    database.append(user_with_id)
+    if db_user:
+        raise HTTPException(
+            status_code=HTTPStatus.CONFLICT,
+            detail="Username already exists" if User.username == user.username else "Email already exists"
+        )
 
-    return user_with_id
+    db_user = User(**user.model_dump())
+
+    session.add(db_user)
+    session.commit()
+    session.refresh()
+
+    return db_user
 
 
 @app.get('/users', response_model=UserList)
-def read_users() -> list[UserPublic]:
+def read_users(session: Session = Depends(get_session)) -> list[UserPublic]:
     return {'users': database}
 
 
 @app.get('/users/{user_id}', response_model=UserPublic)
-def read_user(user_id: int):
+def read_user(user_id: int, session: Session = Depends(get_session)):
     if user_id > len(database) or user_id < 1:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail='User not found!'
@@ -53,7 +71,7 @@ def read_user(user_id: int):
 
 
 @app.put('/users/{user_id}', response_model=UserPublic)
-def update_users__exercicio(user_id: int, user: UserSchema) -> UserPublic:
+def update_users__exercicio(user_id: int, user: UserSchema, session: Session = Depends(get_session)) -> UserPublic:
     if user_id > len(database) or user_id < 1:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail='User not found!'
@@ -66,7 +84,7 @@ def update_users__exercicio(user_id: int, user: UserSchema) -> UserPublic:
 
 
 @app.delete('/users/{user_id}', response_model=Message)
-def delete_users(user_id: int) -> Message:
+def delete_users(user_id: int, session: Session = Depends(get_session)) -> Message:
     if user_id > len(database) or user_id < 1:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail='User not found!'
