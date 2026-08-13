@@ -33,7 +33,7 @@ quote-style = 'single'
 
 [tool.pytest.ini_options]
 pythonpath = ['.']
-addopts = ['-p', 'no:warnings', '--cov=app', '--cov-context=test']
+addopts = ['-p', 'no:warnings', '--cov=.', '--cov-context=test', '--cov-branch', '--cov-report=term-missing',]
 
 [tool.poe.tasks]
 lint.sequence = [
@@ -55,4 +55,4 @@ test.sequence = [
 poetry_command = ""
 
 [tool.typos.files]
-extend-exclude = ['*.md']
+extend-exclude = ['*.md','migrations/**']
