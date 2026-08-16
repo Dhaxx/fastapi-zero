@@ -11,6 +11,7 @@ from sqlalchemy.pool import StaticPool
 from app import app
 from database import get_session
 from models import User, table_registry
+from security import get_password_hash
 
 SAO_PAULO_TZ = ZoneInfo('America/Sao_Paulo')
 
@@ -71,9 +72,24 @@ def mock_db_time():
 
 @pytest.fixture
 def user(session):
-    user = User(username='Ciclano', email='Ciclano@gmail.com', password='1234')
+    user = User(
+        username='Ciclano',
+        email='Ciclano@gmail.com',
+        password=get_password_hash('1234'),
+    )
     session.add(user)
     session.commit()
     session.refresh(user)
 
+    user.clean_password = '1234'
+
     return user
+
+
+@pytest.fixture
+def token(client, user):
+    response = client.post(
+        '/token',
+        data={'username': user.email, 'password': user.clean_password},
+    )
+    return response.json()['access_token']
