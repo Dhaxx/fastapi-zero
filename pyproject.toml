@@ -29,6 +29,7 @@ exclude = ['migrations']
 
 [tool.ruff.lint]
 preview = true
+select = ['I', 'F', 'E', 'W', 'PL', 'PT', 'FAST']
 
 [tool.ruff.format]
 quote-style = 'single'
