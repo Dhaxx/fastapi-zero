@@ -1,20 +1,22 @@
 from dataclasses import asdict
 
+import pytest
 from conftest import event, hook
 
 from models import User
 
 
-def test_create_user(session, mock_db_time):
+@pytest.mark.asyncio
+async def test_create_user(session, mock_db_time):
     with mock_db_time(model=User) as time:
         new_user = User(
             username='Fulano', email='fulano@teste.com', password='fulano123'
         )
 
         session.add(new_user)
-        session.commit()
+        await session.commit()
 
-    user = session.get(User, 1)
+    user = await session.get(User, 1)
 
     assert asdict(user) == {
         'id': 1,

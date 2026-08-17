@@ -9,15 +9,17 @@ dependencies = [
     "fastapi[standard]>=0.141.1",
     "pwdlib[argon2]>=0.3.1",
     "pyjwt>=2.13.0",
-    "sqlalchemy>=2.0.51",
+    "sqlalchemy[asyncio]>=2.0.51",
     "tzdata>=2026.3",
     "uvicorn>=0.52.1",
+    "aiosqlite>=0.22.1",
 ]
 
 [dependency-groups]
 dev = [
     "poethepoet>=0.48.0",
     "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
     "pytest-cov>=7.1.0",
     "ruff>=0.16.1",
     "typos>=1.49.0",
@@ -37,6 +39,7 @@ quote-style = 'single'
 [tool.pytest.ini_options]
 pythonpath = ['.']
 addopts = ['-p', 'no:warnings', '--cov=.', '--cov-context=test', '--cov-branch', '--cov-report=term-missing',]
+asyncio_default_fixture_loop_scope = 'function'
 
 [tool.poe.tasks]
 lint.sequence = [
@@ -59,3 +62,7 @@ poetry_command = ""
 
 [tool.typos.files]
 extend-exclude = ['*.md','migrations/**']
+
+[tool.coverage.run]
+core = "ctrace"
+concurrency = ["thread", "greenlet"]

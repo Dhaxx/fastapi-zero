@@ -8,7 +8,7 @@ from fastapi.security import OAuth2PasswordBearer
 from jwt import DecodeError, decode, encode
 from pwdlib import PasswordHash
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_session
 from models import User
@@ -42,8 +42,8 @@ def create_access_token(data: dict) -> str:
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='auth/token')
 
 
-def get_current_user(
-    session: Annotated[Session, Depends(get_session)],
+async def get_current_user(
+    session: Annotated[AsyncSession, Depends(get_session)],
     token: Annotated[str, Depends(oauth2_scheme)],
 ) -> User:
     credentials_exception = HTTPException(
@@ -63,7 +63,9 @@ def get_current_user(
     except DecodeError:
         raise credentials_exception
 
-    user = session.scalar(select(User).where(User.email == subject_email))
+    user = await session.scalar(
+        select(User).where(User.email == subject_email)
+    )
 
     if not user:
         raise credentials_exception

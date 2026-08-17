@@ -2,10 +2,10 @@ from contextlib import contextmanager
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-import pytest
+import pytest_asyncio
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event
-from sqlalchemy.orm import Session
+from sqlalchemy import event
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import StaticPool
 
 from app import app
@@ -16,7 +16,7 @@ from security import get_password_hash
 SAO_PAULO_TZ = ZoneInfo('America/Sao_Paulo')
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 def client(session):
     def override_get_session():
         return session
@@ -29,20 +29,21 @@ def client(session):
     app.dependency_overrides.clear()
 
 
-@pytest.fixture
-def session():
-    engine = create_engine(
-        'sqlite:///:memory:',
+@pytest_asyncio.fixture
+async def session():
+    engine = create_async_engine(
+        'sqlite+aiosqlite:///:memory:',
         connect_args={'check_same_thread': False},
         poolclass=StaticPool,
     )
-    table_registry.metadata.create_all(engine)
+    async with engine.begin() as conn:
+        await conn.run_sync(table_registry.metadata.create_all)
 
-    with Session(engine) as session:
+    async with AsyncSession(engine, expire_on_commit=False) as session:
         yield session
 
-    table_registry.metadata.drop_all(engine)
-    engine.dispose()
+    async with engine.begin() as conn:
+        await conn.run_sync(table_registry.metadata.drop_all)
 
 
 def hook(mapper, connection, target): ...
@@ -53,10 +54,10 @@ def _mock_db_time(*, model, time=datetime(2026, 12, 31, tzinfo=SAO_PAULO_TZ)):
 
     def fake_time_hook(mapper, connection, target):
         if hasattr(target, 'created_at'):
-            target.created_at = time
+            target.created_at = time.replace(tzinfo=None)
 
         if hasattr(target, 'updated_at'):
-            target.updated_at = time
+            target.updated_at = time.replace(tzinfo=None)
 
     event.listen(model, 'before_insert', fake_time_hook)
 
@@ -65,28 +66,28 @@ def _mock_db_time(*, model, time=datetime(2026, 12, 31, tzinfo=SAO_PAULO_TZ)):
     event.remove(model, 'before_insert', fake_time_hook)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 def mock_db_time():
     return _mock_db_time
 
 
-@pytest.fixture
-def user(session):
+@pytest_asyncio.fixture
+async def user(session):
     user = User(
         username='Ciclano',
         email='Ciclano@gmail.com',
         password=get_password_hash('1234'),
     )
     session.add(user)
-    session.commit()
-    session.refresh(user)
+    await session.commit()
+    await session.refresh(user)
 
     user.clean_password = '1234'
 
     return user
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 def token(client, user):
     response = client.post(
         '/auth/token',

@@ -3,7 +3,7 @@ from jwt import decode
 from security import create_access_token, settings
 
 
-def test_create_access_token():
+async def test_create_access_token():
     data = {'test': 'test'}
     token = create_access_token(data)
 
