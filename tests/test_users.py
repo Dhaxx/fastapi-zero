@@ -67,6 +67,31 @@ async def test_delete_user(client, token, user):
     assert response.json() == {'message': 'User deleted!'}
 
 
+@pytest.mark.asyncio
+async def test_update_user_with_wrong_user(client, token, other_user):
+    response = client.put(
+        f'/users/{other_user.id}',
+        headers={'Authorization': f'Bearer {token}'},
+        json={
+            'username': 'bob',
+            'email': 'bob@example.com',
+            'password': '1a2b3c4d',
+        },
+    )
+    assert response.status_code == HTTPStatus.FORBIDDEN
+    assert response.json() == {'detail': 'Not enough permissions'}
+
+
+@pytest.mark.asyncio
+async def test_delete_user_with_wrong_user(client, token, other_user):
+    response = client.delete(
+        f'/users/{other_user.id}',
+        headers={'Authorization': f'Bearer {token}'},
+    )
+    assert response.status_code == HTTPStatus.FORBIDDEN
+    assert response.json() == {'detail': 'Not enough permissions'}
+
+
 # [EXERCÍCIOS]
 @pytest.mark.asyncio
 async def test_get_user__exercicio(client, user):
@@ -142,3 +167,21 @@ async def test_get_current_user_not_exists__exercicio(client):
 
     assert response.status_code == HTTPStatus.UNAUTHORIZED
     assert response.json() == {'detail': 'Could not validate credentials'}
+
+
+@pytest.mark.asyncio
+async def test_update_integrity_error(client, user, other_user, token):
+    response_update = client.put(
+        f'/users/{user.id}',
+        headers={'Authorization': f'Bearer {token}'},
+        json={
+            'username': other_user.username,
+            'email': 'bob@example.com',
+            'password': 'mynewpassword',
+        },
+    )
+
+    assert response_update.status_code == HTTPStatus.CONFLICT
+    assert response_update.json() == {
+        'detail': 'Username or Email already exists'
+    }
